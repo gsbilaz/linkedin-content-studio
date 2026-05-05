@@ -1,0 +1,37 @@
+{
+  "name": "LinkedIn Content Studio",
+  "short_name": "LCS",
+  "description": "Create and publish LinkedIn content with AI assistance",
+  "start_url": "/dashboard",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#2563eb",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable any"
+    },
+    {
+      "src": "/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable any"
+    }
+  ],
+  "categories": ["productivity", "social"],
+  "shortcuts": [
+    {
+      "name": "New Content",
+      "url": "/new-content",
+      "description": "Submit a new content idea"
+    },
+    {
+      "name": "Drafts",
+      "url": "/drafts",
+      "description": "Review pending drafts"
+    }
+  ]
+}
