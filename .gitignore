@@ -42,3 +42,6 @@ next-env.d.ts
 # supabase local
 supabase/.branches
 supabase/.temp
+
+# trigger.dev local build artifacts
+.trigger/
