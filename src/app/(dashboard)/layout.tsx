@@ -1,5 +1,7 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
+import { db, profiles } from '@/db'
+import { eq } from 'drizzle-orm'
 import { Sidebar } from '@/components/layout/sidebar'
 import { Header } from '@/components/layout/header'
 
@@ -11,7 +13,8 @@ export default async function DashboardLayout({ children }: { children: React.Re
 
   if (!user) redirect('/login')
 
-  const userName = user.user_metadata?.full_name as string | undefined
+  const [profile] = await db.select().from(profiles).where(eq(profiles.id, user.id))
+  const userName = profile?.fullName ?? (user.user_metadata?.full_name as string | undefined)
 
   return (
     <div className="flex h-screen overflow-hidden">

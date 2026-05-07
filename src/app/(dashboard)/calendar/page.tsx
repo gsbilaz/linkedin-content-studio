@@ -1,12 +1,45 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
-import { PlusCircle, CalendarDays } from 'lucide-react'
-import { Card, CardContent } from '@/components/ui/card'
+import { PlusCircle } from 'lucide-react'
+import { and, asc, eq, inArray } from 'drizzle-orm'
+import { createClient } from '@/lib/supabase/server'
+import { db, postDrafts } from '@/db'
 import { Button } from '@/components/ui/button'
+import { CalendarView } from '@/components/calendar/calendar-view'
 
 export const metadata: Metadata = { title: 'Calendar' }
 
-export default function CalendarPage() {
+export default async function CalendarPage() {
+  const supabase = await createClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  const drafts = await db
+    .select({
+      id: postDrafts.id,
+      title: postDrafts.title,
+      status: postDrafts.status,
+      scheduledAt: postDrafts.scheduledAt,
+    })
+    .from(postDrafts)
+    .where(
+      and(
+        eq(postDrafts.userId, user!.id),
+        inArray(postDrafts.status, ['scheduled', 'ready'])
+      )
+    )
+    .orderBy(asc(postDrafts.scheduledAt))
+
+  const calendarDrafts = drafts
+    .filter((d) => d.scheduledAt !== null)
+    .map((d) => ({
+      id: d.id,
+      title: d.title,
+      status: d.status as 'scheduled' | 'ready',
+      scheduledAt: d.scheduledAt!.toISOString(),
+    }))
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -16,24 +49,13 @@ export default function CalendarPage() {
         </div>
         <Button asChild>
           <Link href="/new-content">
-            <PlusCircle />
+            <PlusCircle className="mr-2 h-4 w-4" />
             New Content
           </Link>
         </Button>
       </div>
 
-      <Card>
-        <CardContent className="flex flex-col items-center justify-center py-16 text-center">
-          <CalendarDays className="mb-3 h-10 w-10 text-muted-foreground/50" />
-          <p className="font-medium text-muted-foreground">No scheduled posts</p>
-          <p className="mb-4 text-sm text-muted-foreground">
-            Approved posts will appear here once scheduled
-          </p>
-          <Button asChild>
-            <Link href="/drafts">Go to Drafts</Link>
-          </Button>
-        </CardContent>
-      </Card>
+      <CalendarView drafts={calendarDrafts} />
     </div>
   )
 }

@@ -30,12 +30,14 @@ test.describe('Authentication', () => {
 
   test('login page links to signup', async ({ page }) => {
     await page.goto('/login')
+    await page.waitForLoadState('networkidle')
     await page.getByRole('link', { name: /create account/i }).click()
     await expect(page).toHaveURL(/.*signup.*/)
   })
 
   test('signup page links to login', async ({ page }) => {
     await page.goto('/signup')
+    await page.waitForLoadState('networkidle')
     await page.getByRole('link', { name: /sign in/i }).click()
     await expect(page).toHaveURL(/.*login.*/)
   })

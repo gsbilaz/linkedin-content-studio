@@ -1,6 +1,7 @@
 import type { NextConfig } from 'next'
 
 const nextConfig: NextConfig = {
+  serverExternalPackages: ['libreoffice-convert'],
   images: {
     remotePatterns: [
       {
@@ -15,7 +16,9 @@ const nextConfig: NextConfig = {
   },
   experimental: {
     serverActions: {
-      allowedOrigins: ['localhost:3000'],
+      allowedOrigins: process.env.NEXT_PUBLIC_APP_URL
+        ? [new URL(process.env.NEXT_PUBLIC_APP_URL).host, 'localhost:3000']
+        : ['localhost:3000'],
     },
   },
 }

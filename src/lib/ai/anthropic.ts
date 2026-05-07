@@ -1,26 +1,47 @@
 import Anthropic from '@anthropic-ai/sdk'
-import type { AIProvider, GenerateDraftInput, GenerateDraftResult } from './types'
+import type { AIProvider, GenerateDraftInput, GenerateDraftResult, MultipleDraftResult } from './types'
 
 const MODEL = 'claude-sonnet-4-6'
 
-function getClient(): Anthropic {
-  if (!process.env.ANTHROPIC_API_KEY) {
-    throw new Error('ANTHROPIC_API_KEY is not configured. Add it to your .env.local file.')
+function getClient(apiKey?: string): Anthropic {
+  if (!apiKey) {
+    throw new Error('No Anthropic API key. Add your key in Settings → AI Providers.')
   }
-  return new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
+  return new Anthropic({ apiKey })
 }
 
 function parseJson<T>(text: string): T {
-  // Handle direct JSON or JSON wrapped in markdown code blocks
+  // 1. Try direct parse first (clean response)
   try {
     return JSON.parse(text) as T
   } catch {
-    const inBlock = text.match(/```(?:json)?\s*(\{[\s\S]*?\}|\[[\s\S]*?\])\s*```/)
-    const inline = text.match(/(\{[\s\S]*\}|\[[\s\S]*\])/)
-    const raw = inBlock?.[1] ?? inline?.[1]
-    if (!raw) throw new Error('Could not extract JSON from Claude response')
-    return JSON.parse(raw) as T
+    // fall through
   }
+  // 2. Strip markdown code block and try again
+  const inBlock = text.match(/```(?:json)?\s*([\s\S]+?)\s*```/)
+  if (inBlock?.[1]) {
+    try {
+      return JSON.parse(inBlock[1]) as T
+    } catch {
+      // fall through
+    }
+  }
+  // 3. Extract array first, then object (array must be tried before object
+  //    because the object pattern would greedily match the inner objects of
+  //    an array, stripping the surrounding brackets)
+  const array = text.match(/\[[\s\S]*\]/)
+  if (array?.[0]) {
+    try {
+      return JSON.parse(array[0]) as T
+    } catch {
+      // fall through
+    }
+  }
+  const obj = text.match(/\{[\s\S]*\}/)
+  if (obj?.[0]) {
+    return JSON.parse(obj[0]) as T
+  }
+  throw new Error(`Could not extract JSON from Claude response. Raw: ${text.slice(0, 300)}`)
 }
 
 const LINKEDIN_SYSTEM_PROMPT = `You are an expert LinkedIn content writer. You transform raw ideas, notes, and drafts into polished, high-performing LinkedIn posts.
@@ -39,8 +60,9 @@ export const anthropicProvider: AIProvider = {
     rawContent,
     title,
     styleProfile,
+    apiKey,
   }: GenerateDraftInput): Promise<GenerateDraftResult> {
-    const client = getClient()
+    const client = getClient(apiKey)
 
     const system = styleProfile
       ? `${LINKEDIN_SYSTEM_PROMPT}\n\nUser's personal writing style — match this closely:\n${styleProfile}`
@@ -75,8 +97,60 @@ export const anthropicProvider: AIProvider = {
     return parseJson<GenerateDraftResult>(block.text)
   },
 
-  async summarizeContent(content: string): Promise<string> {
-    const client = getClient()
+  async generateMultipleDrafts({
+    rawContent,
+    styleProfile,
+    apiKey,
+  }: GenerateDraftInput): Promise<MultipleDraftResult[]> {
+    const client = getClient(apiKey)
+
+    const system = styleProfile
+      ? `${LINKEDIN_SYSTEM_PROMPT}\n\nUser's personal writing style — match this closely:\n${styleProfile}`
+      : LINKEDIN_SYSTEM_PROMPT
+
+    const userMessage = [
+      'Analyze this content and identify the distinct themes, concepts, or angles that each deserve their own standalone LinkedIn post.',
+      '',
+      'Rules:',
+      '- Each post must stand completely alone — no cross-references to the other posts',
+      '- Only create posts for genuinely distinct themes — typically 2–5 posts',
+      '- Do not create posts that overlap significantly in message or angle',
+      '- Quality over quantity: fewer strong posts beat many weak ones',
+      '- Each post must follow all LinkedIn best practices (hook, short paragraphs, CTA, 2–3 hashtags)',
+      '',
+      'Content to analyze:',
+      rawContent,
+      '',
+      'Respond with ONLY a valid JSON array — no markdown, no explanation, no extra text:',
+      '[',
+      '  {',
+      '    "title": "Short internal label for this draft (5–8 words)",',
+      '    "content": "The complete LinkedIn post text, ready to publish"',
+      '  }',
+      ']',
+    ].join('\n')
+
+    const response = await client.messages.create({
+      model: MODEL,
+      max_tokens: 8192,
+      system,
+      messages: [{ role: 'user', content: userMessage }],
+    })
+
+    const block = response.content[0]
+    if (block.type !== 'text') throw new Error('Unexpected response type from Claude')
+
+    const parsed = parseJson<MultipleDraftResult[] | MultipleDraftResult>(block.text)
+    // Claude occasionally returns a single object instead of a one-item array
+    const drafts: MultipleDraftResult[] = Array.isArray(parsed) ? parsed : [parsed]
+    if (drafts.length === 0) {
+      throw new Error('Claude did not return any drafts')
+    }
+    return drafts
+  },
+
+  async summarizeContent(content: string, apiKey?: string): Promise<string> {
+    const client = getClient(apiKey)
     const response = await client.messages.create({
       model: MODEL,
       max_tokens: 512,
@@ -92,8 +166,8 @@ export const anthropicProvider: AIProvider = {
     return block.text
   },
 
-  async extractKeyPoints(content: string): Promise<string[]> {
-    const client = getClient()
+  async extractKeyPoints(content: string, apiKey?: string): Promise<string[]> {
+    const client = getClient(apiKey)
     const response = await client.messages.create({
       model: MODEL,
       max_tokens: 512,
@@ -109,8 +183,8 @@ export const anthropicProvider: AIProvider = {
     return parseJson<string[]>(block.text)
   },
 
-  async analyzeWritingStyle(samples: string[]): Promise<string> {
-    const client = getClient()
+  async analyzeWritingStyle(samples: string[], apiKey?: string): Promise<string> {
+    const client = getClient(apiKey)
     const combined = samples.join('\n\n---\n\n')
     const response = await client.messages.create({
       model: MODEL,
@@ -127,8 +201,8 @@ export const anthropicProvider: AIProvider = {
     return block.text
   },
 
-  async rewriteInUserStyle(draft: string, styleProfile: string): Promise<string> {
-    const client = getClient()
+  async rewriteInUserStyle(draft: string, styleProfile: string, apiKey?: string): Promise<string> {
+    const client = getClient(apiKey)
     const response = await client.messages.create({
       model: MODEL,
       max_tokens: 1024,
@@ -140,8 +214,8 @@ export const anthropicProvider: AIProvider = {
     return block.text
   },
 
-  async scoreDraftQuality(draft: string): Promise<number> {
-    const client = getClient()
+  async scoreDraftQuality(draft: string, apiKey?: string): Promise<number> {
+    const client = getClient(apiKey)
     const response = await client.messages.create({
       model: MODEL,
       max_tokens: 64,

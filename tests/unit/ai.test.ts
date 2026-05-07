@@ -15,8 +15,9 @@ const MOCK_RESULT = {
   draft: 'This is the LinkedIn post draft.\n\nIt has multiple paragraphs.\n\n#testing',
 }
 
+const TEST_API_KEY = 'sk-ant-test-key-123'
+
 beforeEach(() => {
-  process.env.ANTHROPIC_API_KEY = 'test-key-123'
   vi.resetModules()
   mockCreate.mockReset()
 })
@@ -31,6 +32,7 @@ describe('anthropicProvider.generateLinkedInDraft', () => {
     const result = await anthropicProvider.generateLinkedInDraft({
       rawContent: 'I learned a lot building my first product...',
       title: 'Product lessons',
+      apiKey: TEST_API_KEY,
     })
 
     expect(result.suggestedTitle).toBe(MOCK_RESULT.suggestedTitle)
@@ -52,18 +54,17 @@ describe('anthropicProvider.generateLinkedInDraft', () => {
     const { anthropicProvider } = await import('@/lib/ai/anthropic')
     const result = await anthropicProvider.generateLinkedInDraft({
       rawContent: 'Some content here',
+      apiKey: TEST_API_KEY,
     })
 
     expect(result.draft).toBe(MOCK_RESULT.draft)
   })
 
-  it('throws when ANTHROPIC_API_KEY is missing', async () => {
-    delete process.env.ANTHROPIC_API_KEY
-
+  it('throws when no apiKey is provided', async () => {
     const { anthropicProvider } = await import('@/lib/ai/anthropic')
     await expect(
       anthropicProvider.generateLinkedInDraft({ rawContent: 'test' })
-    ).rejects.toThrow('ANTHROPIC_API_KEY')
+    ).rejects.toThrow('No Anthropic API key')
   })
 })
 
@@ -74,7 +75,7 @@ describe('anthropicProvider.scoreDraftQuality', () => {
     })
 
     const { anthropicProvider } = await import('@/lib/ai/anthropic')
-    const score = await anthropicProvider.scoreDraftQuality('A great LinkedIn post...')
+    const score = await anthropicProvider.scoreDraftQuality('A great LinkedIn post...', TEST_API_KEY)
 
     expect(score).toBe(82)
     expect(score).toBeGreaterThanOrEqual(1)
@@ -87,7 +88,7 @@ describe('anthropicProvider.scoreDraftQuality', () => {
     })
 
     const { anthropicProvider } = await import('@/lib/ai/anthropic')
-    const score = await anthropicProvider.scoreDraftQuality('Some post')
+    const score = await anthropicProvider.scoreDraftQuality('Some post', TEST_API_KEY)
 
     expect(score).toBe(70)
   })

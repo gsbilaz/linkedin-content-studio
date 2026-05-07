@@ -36,7 +36,10 @@ export async function middleware(request: NextRequest) {
     pathname.startsWith('/auth') ||
     pathname.startsWith('/api/health')
 
-  if (!user && !isPublicRoute) {
+  // API routes handle their own 401 responses — never redirect them to /login
+  const isApiRoute = pathname.startsWith('/api/')
+
+  if (!user && !isPublicRoute && !isApiRoute) {
     const loginUrl = request.nextUrl.clone()
     loginUrl.pathname = '/login'
     loginUrl.searchParams.set('next', pathname)

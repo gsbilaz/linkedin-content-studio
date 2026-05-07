@@ -2,6 +2,7 @@ export interface GenerateDraftInput {
   rawContent: string
   title?: string
   styleProfile?: string
+  apiKey?: string
 }
 
 export interface GenerateDraftResult {
@@ -11,11 +12,17 @@ export interface GenerateDraftResult {
   draft: string
 }
 
+export interface MultipleDraftResult {
+  title: string
+  content: string
+}
+
 export interface AIProvider {
   generateLinkedInDraft(input: GenerateDraftInput): Promise<GenerateDraftResult>
-  summarizeContent(content: string): Promise<string>
-  extractKeyPoints(content: string): Promise<string[]>
-  analyzeWritingStyle(samples: string[]): Promise<string>
-  rewriteInUserStyle(draft: string, styleProfile: string): Promise<string>
-  scoreDraftQuality(draft: string): Promise<number>
+  generateMultipleDrafts(input: GenerateDraftInput): Promise<MultipleDraftResult[]>
+  summarizeContent(content: string, apiKey?: string): Promise<string>
+  extractKeyPoints(content: string, apiKey?: string): Promise<string[]>
+  analyzeWritingStyle(samples: string[], apiKey?: string): Promise<string>
+  rewriteInUserStyle(draft: string, styleProfile: string, apiKey?: string): Promise<string>
+  scoreDraftQuality(draft: string, apiKey?: string): Promise<number>
 }

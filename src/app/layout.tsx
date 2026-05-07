@@ -1,6 +1,8 @@
 import type { Metadata, Viewport } from 'next'
 import { Inter } from 'next/font/google'
 import { Toaster } from 'sonner'
+import { ServiceWorkerRegistration } from '@/components/pwa/service-worker-registration'
+import { InstallPrompt } from '@/components/pwa/install-prompt'
 import './globals.css'
 
 const inter = Inter({ subsets: ['latin'] })
@@ -17,6 +19,13 @@ export const metadata: Metadata = {
     statusBarStyle: 'default',
     title: 'LCS',
   },
+  icons: {
+    icon: [
+      { url: '/icons/icon-192.png', sizes: '192x192', type: 'image/png' },
+      { url: '/icons/icon-512.png', sizes: '512x512', type: 'image/png' },
+    ],
+    apple: '/icons/apple-touch-icon.png',
+  },
 }
 
 export const viewport: Viewport = {
@@ -29,9 +38,11 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className={inter.className}>
+      <body className={inter.className} suppressHydrationWarning>
         {children}
         <Toaster richColors position="top-right" />
+        <ServiceWorkerRegistration />
+        <InstallPrompt />
       </body>
     </html>
   )

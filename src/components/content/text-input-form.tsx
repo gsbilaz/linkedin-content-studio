@@ -9,6 +9,7 @@ import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { DraftModeToggle } from '@/components/new-content/draft-mode-toggle'
 
 const MAX_CHARS = 10000
 
@@ -16,6 +17,7 @@ export function TextInputForm() {
   const router = useRouter()
   const [title, setTitle] = useState('')
   const [content, setContent] = useState('')
+  const [mode, setMode] = useState<'single' | 'multiple'>('single')
   const [isLoading, setIsLoading] = useState(false)
 
   const charCount = content.length
@@ -34,16 +36,17 @@ export function TextInputForm() {
         body: JSON.stringify({
           title: title.trim() || undefined,
           rawText: content.trim(),
+          mode,
         }),
       })
 
-      const data = (await response.json()) as { draftId?: string; error?: string }
+      const data = (await response.json()) as { draftId?: string; groupId?: string; error?: string }
 
       if (!response.ok) {
         throw new Error(data.error ?? 'Something went wrong')
       }
 
-      toast.success('Draft generated!')
+      toast.success(mode === 'multiple' ? 'Drafts generated — reviewing first one' : 'Draft generated!')
       router.push(`/drafts/${data.draftId}`)
       router.refresh()
     } catch (err) {
@@ -95,6 +98,8 @@ export function TextInputForm() {
             </div>
           </div>
 
+          <DraftModeToggle value={mode} onChange={setMode} disabled={isLoading} />
+
           <Button
             type="submit"
             className="w-full"
@@ -104,19 +109,21 @@ export function TextInputForm() {
             {isLoading ? (
               <>
                 <Loader2 className="animate-spin" />
-                Generating draft...
+                {mode === 'multiple' ? 'Generating drafts…' : 'Generating draft…'}
               </>
             ) : (
               <>
                 <Sparkles />
-                Generate LinkedIn Post
+                {mode === 'multiple' ? 'Generate Multiple Posts' : 'Generate LinkedIn Post'}
               </>
             )}
           </Button>
 
           {isLoading && (
             <p className="text-center text-xs text-muted-foreground animate-pulse">
-              Claude is reading your content and writing a draft — usually takes 5–15 seconds
+              {mode === 'multiple'
+                ? 'Claude is identifying themes and writing a post for each one — may take 20–40 seconds'
+                : 'Claude is reading your content and writing a draft — usually takes 5–15 seconds'}
             </p>
           )}
         </form>

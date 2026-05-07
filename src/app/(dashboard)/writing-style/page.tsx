@@ -1,63 +1,58 @@
 import type { Metadata } from 'next'
-import { Pen, Plus, Sparkles } from 'lucide-react'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
+import { createClient } from '@/lib/supabase/server'
+import { db, writingSamples, styleProfiles } from '@/db'
+import { desc, eq } from 'drizzle-orm'
+import { WritingStylePanel } from '@/components/writing-style/writing-style-panel'
 
 export const metadata: Metadata = { title: 'Writing Style' }
 
-export default function WritingStylePage() {
+export default async function WritingStylePage() {
+  const supabase = await createClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  const [samples, profileRows] = await Promise.all([
+    user
+      ? db
+          .select()
+          .from(writingSamples)
+          .where(eq(writingSamples.userId, user.id))
+          .orderBy(desc(writingSamples.createdAt))
+      : Promise.resolve([]),
+    user
+      ? db
+          .select()
+          .from(styleProfiles)
+          .where(eq(styleProfiles.userId, user.id))
+          .orderBy(desc(styleProfiles.version))
+          .limit(1)
+      : Promise.resolve([]),
+  ])
+
+  const latestProfile = profileRows[0] ?? null
+
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-2xl font-bold tracking-tight">Writing Style</h2>
-          <p className="text-muted-foreground">
-            Train the AI to write in your voice
-          </p>
-        </div>
-        <Button>
-          <Plus />
-          Add Sample
-        </Button>
-      </div>
-
-      {/* Style Profile */}
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <CardTitle className="text-base">Style Profile</CardTitle>
-            <Badge variant="secondary">Not generated</Badge>
-          </div>
-          <CardDescription>
-            Add at least 3 writing samples so we can generate your personalised style profile
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Button variant="outline" disabled>
-            <Sparkles />
-            Generate Style Profile
-          </Button>
-        </CardContent>
-      </Card>
-
-      {/* Writing Samples */}
-      <div>
-        <h3 className="mb-4 text-lg font-semibold">Writing Samples</h3>
-        <Card>
-          <CardContent className="flex flex-col items-center justify-center py-16 text-center">
-            <Pen className="mb-3 h-10 w-10 text-muted-foreground/50" />
-            <p className="font-medium text-muted-foreground">No writing samples yet</p>
-            <p className="mb-4 text-sm text-muted-foreground">
-              Add examples of your best LinkedIn posts or writing to teach the AI your style
-            </p>
-            <Button>
-              <Plus />
-              Add your first sample
-            </Button>
-          </CardContent>
-        </Card>
-      </div>
-    </div>
+    <WritingStylePanel
+      initialSamples={samples.map((s) => ({
+        id: s.id,
+        title: s.title,
+        content: s.content,
+        createdAt: s.createdAt.toISOString(),
+      }))}
+      initialProfile={
+        latestProfile
+          ? {
+              id: latestProfile.id,
+              version: latestProfile.version,
+              profileData: latestProfile.profileData as {
+                analysis: string
+                generatedFromSamples: number
+              },
+              createdAt: latestProfile.createdAt.toISOString(),
+            }
+          : null
+      }
+    />
   )
 }

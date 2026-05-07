@@ -1,0 +1,23 @@
+{
+  "configPath": "C:\\Users\\bdudl\\Documents\\Coding Projects\\linkedin-content-studio\\.trigger\\tmp\\build-z2G53Q\\Documents\\Coding Projects\\linkedin-content-studio\\trigger.config.mjs",
+  "customConditions": [
+  ],
+  "prompts": [
+  ],
+  "queues": [
+  ],
+  "runtime": "node",
+  "runtimeVersion": "24.15.0",
+  "tasks": [
+    {
+      "entryPoint": "C:\\Users\\bdudl\\Documents\\Coding Projects\\linkedin-content-studio\\.trigger\\tmp\\build-z2G53Q\\Documents\\Coding Projects\\linkedin-content-studio\\src\\trigger\\schedule-post.mjs",
+      "filePath": "src/trigger/schedule-post.ts",
+      "id": "schedule-post",
+      "maxDuration": 300
+    }
+  ],
+  "timings": {
+    "src/trigger/schedule-post.ts": 41.55529999999999
+  },
+  "workerEntryPoint": "C:\\Users\\bdudl\\Documents\\Coding Projects\\linkedin-content-studio\\.trigger\\tmp\\build-z2G53Q\\AppData\\Local\\npm-cache\\_npx\\f51a09bd0abf5f10\\node_modules\\trigger.dev\\dist\\esm\\entryPoints\\dev-run-worker.mjs"
+}

@@ -1,18 +1,52 @@
 import type { Metadata } from 'next'
 import { createClient } from '@/lib/supabase/server'
+import { db, profiles, linkedinAccounts, aiProviderAccounts } from '@/db'
+import { and, eq } from 'drizzle-orm'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
 import { Linkedin, Key, User } from 'lucide-react'
+import { ProfileNameForm } from '@/components/settings/profile-name-form'
+import { LinkedInConnectCard } from '@/components/settings/linkedin-connect-card'
+import { AIProviderCard } from '@/components/settings/ai-provider-card'
 
 export const metadata: Metadata = { title: 'Settings' }
 
-export default async function SettingsPage() {
+export default async function SettingsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ linkedin?: string }>
+}) {
+  const { linkedin } = await searchParams
+
   const supabase = await createClient()
   const {
     data: { user },
   } = await supabase.auth.getUser()
+
+  const [profile, linkedInConnection, aiProviders] = await Promise.all([
+    db.select().from(profiles).where(eq(profiles.id, user!.id)).then((r) => r[0] ?? null),
+    db
+      .select({
+        profileName: linkedinAccounts.profileName,
+        profilePictureUrl: linkedinAccounts.profilePictureUrl,
+        tokenExpiresAt: linkedinAccounts.tokenExpiresAt,
+      })
+      .from(linkedinAccounts)
+      .where(and(eq(linkedinAccounts.userId, user!.id), eq(linkedinAccounts.isActive, true)))
+      .then((r) => r[0] ?? null),
+    db
+      .select({ provider: aiProviderAccounts.provider, createdAt: aiProviderAccounts.createdAt })
+      .from(aiProviderAccounts)
+      .where(and(eq(aiProviderAccounts.userId, user!.id), eq(aiProviderAccounts.isActive, true))),
+  ])
+
+  const connection = linkedInConnection
+    ? {
+        profileName: linkedInConnection.profileName,
+        profilePictureUrl: linkedInConnection.profilePictureUrl,
+        tokenExpiresAt: linkedInConnection.tokenExpiresAt?.toISOString() ?? null,
+      }
+    : null
 
   return (
     <div className="space-y-6 max-w-2xl">
@@ -29,20 +63,11 @@ export default async function SettingsPage() {
             <CardTitle className="text-base">Account</CardTitle>
           </div>
         </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid gap-1">
-            <p className="text-sm font-medium">Email</p>
-            <p className="text-sm text-muted-foreground">{user?.email}</p>
-          </div>
-          <div className="grid gap-1">
-            <p className="text-sm font-medium">Name</p>
-            <p className="text-sm text-muted-foreground">
-              {user?.user_metadata?.full_name ?? '—'}
-            </p>
-          </div>
-          <Button variant="outline" size="sm" disabled>
-            Edit Profile
-          </Button>
+        <CardContent>
+          <ProfileNameForm
+            initialName={profile?.fullName ?? null}
+            email={user?.email}
+          />
         </CardContent>
       </Card>
 
@@ -56,22 +81,14 @@ export default async function SettingsPage() {
             <CardTitle className="text-base">LinkedIn Connection</CardTitle>
           </div>
           <CardDescription>
-            Connect your LinkedIn account to publish posts directly
+            Connect your LinkedIn account to publish posts directly from the app
           </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="flex items-center gap-3">
-            <Badge variant="outline">Not connected</Badge>
-            <span className="text-sm text-muted-foreground">
-              LinkedIn API access requires approval
-            </span>
-          </div>
-          <Button variant="outline" size="sm" disabled>
-            Connect LinkedIn
-          </Button>
-          <p className="text-xs text-muted-foreground">
-            Even without a direct connection, you can copy approved posts and publish manually.
-          </p>
+        <CardContent>
+          <LinkedInConnectCard
+            connection={connection}
+            statusMessage={linkedin ?? null}
+          />
         </CardContent>
       </Card>
 
@@ -82,30 +99,19 @@ export default async function SettingsPage() {
         <CardHeader>
           <div className="flex items-center gap-2">
             <Key className="h-4 w-4" />
-            <CardTitle className="text-base">AI Provider Keys</CardTitle>
+            <CardTitle className="text-base">AI Providers</CardTitle>
           </div>
           <CardDescription>
-            Optionally supply your own API keys. The app uses Claude by default.
+            Add your own API keys — each key is encrypted and only used for your account
           </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-3">
-          <div className="flex items-center justify-between rounded-lg border p-3">
-            <div>
-              <p className="text-sm font-medium">Anthropic (Claude)</p>
-              <p className="text-xs text-muted-foreground">Default provider for drafting</p>
-            </div>
-            <Badge variant="secondary">System key</Badge>
-          </div>
-          <div className="flex items-center justify-between rounded-lg border p-3">
-            <div>
-              <p className="text-sm font-medium">OpenAI</p>
-              <p className="text-xs text-muted-foreground">Used for transcription and fallback</p>
-            </div>
-            <Badge variant="secondary">System key</Badge>
-          </div>
-          <Button variant="outline" size="sm" disabled>
-            Add Custom Key
-          </Button>
+        <CardContent>
+          <AIProviderCard
+            connectedProviders={aiProviders.map((p) => ({
+              provider: p.provider,
+              createdAt: p.createdAt.toISOString(),
+            }))}
+          />
         </CardContent>
       </Card>
     </div>
