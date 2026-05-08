@@ -15,7 +15,7 @@ export interface GroupContext {
   nextId: string | null
 }
 
-interface DraftGroupNavProps extends GroupContext {}
+type DraftGroupNavProps = GroupContext
 
 export function DraftGroupNav({ groupId, position, total, prevId, nextId }: DraftGroupNavProps) {
   const router = useRouter()

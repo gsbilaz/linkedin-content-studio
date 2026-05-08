@@ -127,7 +127,7 @@ export default async function DashboardPage() {
               <PlusCircle className="h-8 w-8 text-primary" />
             </div>
             <div>
-              <p className="text-lg font-semibold">Welcome — let's create your first post</p>
+              <p className="text-lg font-semibold">Welcome &mdash; let&apos;s create your first post</p>
               <p className="text-sm text-muted-foreground mt-1">
                 Submit a text idea, upload a recording, or paste a link to get started
               </p>
